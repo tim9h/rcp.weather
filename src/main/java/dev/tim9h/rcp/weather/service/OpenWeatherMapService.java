@@ -3,7 +3,7 @@ package dev.tim9h.rcp.weather.service;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.net.URL;
+import java.net.URI;
 
 import javax.net.ssl.HttpsURLConnection;
 
@@ -72,7 +72,7 @@ public class OpenWeatherMapService implements WeatherService {
 
 	private HttpsURLConnection getConnection(String urlString) throws IOException {
 		logger.debug(() -> urlString);
-		var url = new URL(urlString);
+		var url = URI.create(urlString).toURL();
 		var con = (HttpsURLConnection) url.openConnection();
 		con.setRequestMethod(METHOD_GET);
 		con.setRequestProperty(USER_AGENT, USER_AGENT_VALUE);
