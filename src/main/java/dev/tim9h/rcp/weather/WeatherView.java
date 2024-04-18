@@ -80,7 +80,7 @@ public class WeatherView implements CCard {
 		var coordinate = getCoord();
 		if (StringUtils.isNotBlank(units) && coordinate != null) {
 			Platform.runLater(() -> {
-				if (wrapper.getChildren().contains(forecastPane)) {
+				if (wrapper != null && wrapper.getChildren().contains(forecastPane)) {
 					wrapper.getChildren().remove(forecastPane);
 					wrapper.getChildren().add(currentWeatherPane);
 				}
