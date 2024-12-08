@@ -57,7 +57,7 @@ public class CurrentWeatherPane extends GridPane {
 		getColumnConstraints().addAll(wide, col, col, col);
 
 		temperature = new Hyperlink();
-		temperature.setOnAction(e -> {
+		temperature.setOnAction(_ -> {
 			var location = settings.getString(WeatherViewFactory.SETTING_LOCATION);
 			openUrl("https://www.google.com/search?q=weather+%s", encodeValue(location));
 		});
