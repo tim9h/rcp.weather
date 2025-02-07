@@ -7,6 +7,10 @@ import java.util.List;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.Logger;
 
+import com.google.inject.Inject;
+import com.google.inject.Injector;
+
+import dev.tim9h.rcp.controls.IconButton;
 import dev.tim9h.rcp.logging.InjectLogger;
 import dev.tim9h.rcp.weather.bean.Forecast;
 import javafx.application.Platform;
@@ -14,6 +18,7 @@ import javafx.geometry.HPos;
 import javafx.scene.layout.ColumnConstraints;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
 
 public class ForecastPane extends GridPane {
 
@@ -21,8 +26,14 @@ public class ForecastPane extends GridPane {
 	private Logger logger;
 
 	private List<ForecastDayPane> days;
+	
+	@Inject
+	private IconButton btnSwap;
 
-	public ForecastPane() {
+	@Inject
+	public ForecastPane(Injector injector) {
+		injector.injectMembers(this);
+		
 		getStyleClass().add("ccCard");
 		var col = new ColumnConstraints();
 		col.setPercentWidth(20);
@@ -34,9 +45,28 @@ public class ForecastPane extends GridPane {
 		for (int i = 0; i < 5; i++) {
 			var day = new ForecastDayPane();
 			days.add(day);
-			add(day.getTop(), i, 0);
-			add(day.getBottom(), i, 1);
+			if (i == 4) {
+				createSwapButtonWrapper(i, day);
+			} else {
+				add(day.getTop(), i, 0);
+				add(day.getBottom(), i, 1);
+			}
 		}
+	}
+
+	private void createSwapButtonWrapper(int i, ForecastDayPane day) {
+		var swapWrapper = new GridPane();
+		var dayCC = new ColumnConstraints();
+		dayCC.setHgrow(Priority.ALWAYS);
+		var btnCC = new ColumnConstraints();
+		btnCC.setPrefWidth(Region.USE_COMPUTED_SIZE);
+		swapWrapper.getColumnConstraints().addAll(dayCC, btnCC);
+		swapWrapper.add(day.getTop(), 0, 0);
+		swapWrapper.add(day.getBottom(), 0, 1);
+		btnSwap.setLabel('⇄');
+		btnSwap.setOnAction(_ -> logger.debug(() -> "Current"));
+		swapWrapper.add(btnSwap, 1, 0, 1, 2);
+		add(swapWrapper, i, 0, 1, 2);
 	}
 
 	public void update(Forecast forecast) {

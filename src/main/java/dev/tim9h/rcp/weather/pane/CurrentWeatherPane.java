@@ -10,7 +10,9 @@ import java.nio.charset.StandardCharsets;
 import org.apache.logging.log4j.Logger;
 
 import com.google.inject.Inject;
+import com.google.inject.Injector;
 
+import dev.tim9h.rcp.controls.IconButton;
 import dev.tim9h.rcp.logging.InjectLogger;
 import dev.tim9h.rcp.settings.Settings;
 import dev.tim9h.rcp.weather.WeatherViewFactory;
@@ -23,6 +25,7 @@ import javafx.scene.control.Label;
 import javafx.scene.layout.ColumnConstraints;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
 
 public class CurrentWeatherPane extends GridPane {
 
@@ -43,16 +46,20 @@ public class CurrentWeatherPane extends GridPane {
 
 	@InjectLogger
 	private Logger logger;
+	
+	@Inject
+	private IconButton btnSwap;
 
-	public CurrentWeatherPane() {
+	@Inject
+	public CurrentWeatherPane(Injector injector) {
+		injector.injectMembers(this);
+		
 		getStyleClass().add("ccCard");
 		var col = new ColumnConstraints();
 		col.setPercentWidth(23.3);
-		col.setHgrow(Priority.ALWAYS);
 		col.setHalignment(HPos.LEFT);
 		var wide = new ColumnConstraints();
 		wide.setPercentWidth(30);
-		wide.setHgrow(Priority.ALWAYS);
 		wide.setHalignment(HPos.LEFT);
 		getColumnConstraints().addAll(wide, col, col, col);
 
@@ -82,8 +89,23 @@ public class CurrentWeatherPane extends GridPane {
 		add(lblHumidiy, 2, 0);
 		add(humidity, 2, 1);
 
-		add(lblWind, 3, 0);
-		add(wind, 3, 1);
+		var windGrid = createSwapButtonWrapper(lblWind);
+		add(windGrid, 3, 0, 1, 2);
+	}
+
+	private GridPane createSwapButtonWrapper(Label lblWind) {
+		var windGrid = new GridPane();
+        var windCC = new ColumnConstraints();
+        windCC.setHgrow(Priority.ALWAYS); 
+        var btnCC = new ColumnConstraints();
+        btnCC.setPrefWidth(Region.USE_COMPUTED_SIZE);
+        windGrid.getColumnConstraints().addAll(windCC, btnCC);
+		windGrid.add(lblWind, 0, 0);
+		windGrid.add(wind, 0, 1);
+		btnSwap.setLabel('⇄');
+		btnSwap.setOnAction(_ -> logger.debug(() -> "Forecast"));
+		windGrid.add(btnSwap, 1, 0, 1, 2);
+		return windGrid;
 	}
 
 	private static String encodeValue(String value) {
