@@ -110,7 +110,8 @@ public class CurrentWeatherPane extends GridPane {
 			description.textProperty().set(weather.description());
 			precipitation.textProperty().set(weather.precipitation() + " mm");
 			humidity.textProperty().set(weather.humidity() + "%");
-			wind.textProperty().set(weather.windSpeed() + WeatherUtils.getUnitStringWindSpeed(units));
+			var windSpeed = units.equals("imperial") ? weather.windSpeed() : weather.windSpeed() * 3.6; // km/h
+			wind.textProperty().set(String.format("%.1f %s", windSpeed, WeatherUtils.getUnitStringWindSpeed(units)));
 		});
 	}
 

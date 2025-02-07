@@ -16,8 +16,8 @@ public class WeatherUtils {
 
 	public static String getUnitStringWindSpeed(String units) {
 		return switch (units) {
-		case "imperial" -> " m/h";
-		default -> " m/s";
+		case "imperial" -> "m/h";
+		default -> "km/h";
 		};
 	}
 
