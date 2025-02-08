@@ -17,6 +17,10 @@ public class WeatherViewFactory implements CCardFactory {
 	public static final String SETTING_LOCATION = "weather.location.name";
 
 	public static final String SETTING_OPENWEATHERMAP_APIKEY = "weather.provider.openweathermap.apikey";
+	
+	public static final String SETTING_WEATHER_MODE = "weather.mode";
+	
+	public static final String SETTING_TEMPORARY_WEATHER_DURATION = "weather.temporary.duration";
 
 	@Inject
 	private WeatherView view;
@@ -37,6 +41,8 @@ public class WeatherViewFactory implements CCardFactory {
 		map.put(SETTING_UNITS, "metric");
 		map.put(SETTING_LOCATION, "Kempten");
 		map.put(SETTING_OPENWEATHERMAP_APIKEY, StringUtils.EMPTY);
+		map.put(SETTING_WEATHER_MODE, "current");
+		map.put(SETTING_TEMPORARY_WEATHER_DURATION, "7000");
 		return map;
 	}
 

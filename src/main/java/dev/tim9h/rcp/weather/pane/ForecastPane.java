@@ -11,6 +11,8 @@ import com.google.inject.Inject;
 import com.google.inject.Injector;
 
 import dev.tim9h.rcp.controls.IconButton;
+import dev.tim9h.rcp.event.CcEvent;
+import dev.tim9h.rcp.event.EventManager;
 import dev.tim9h.rcp.logging.InjectLogger;
 import dev.tim9h.rcp.weather.bean.Forecast;
 import javafx.application.Platform;
@@ -29,6 +31,9 @@ public class ForecastPane extends GridPane {
 	
 	@Inject
 	private IconButton btnSwap;
+
+	@Inject
+	private EventManager eventManager;
 
 	@Inject
 	public ForecastPane(Injector injector) {
@@ -64,7 +69,7 @@ public class ForecastPane extends GridPane {
 		swapWrapper.add(day.getTop(), 0, 0);
 		swapWrapper.add(day.getBottom(), 0, 1);
 		btnSwap.setLabel('⇄');
-		btnSwap.setOnAction(_ -> logger.debug(() -> "Current"));
+		btnSwap.setOnAction(_ -> eventManager.post(new CcEvent("weather", "current")));
 		swapWrapper.add(btnSwap, 1, 0, 1, 2);
 		add(swapWrapper, i, 0, 1, 2);
 	}

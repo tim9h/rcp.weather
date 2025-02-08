@@ -13,6 +13,8 @@ import com.google.inject.Inject;
 import com.google.inject.Injector;
 
 import dev.tim9h.rcp.controls.IconButton;
+import dev.tim9h.rcp.event.CcEvent;
+import dev.tim9h.rcp.event.EventManager;
 import dev.tim9h.rcp.logging.InjectLogger;
 import dev.tim9h.rcp.settings.Settings;
 import dev.tim9h.rcp.weather.WeatherViewFactory;
@@ -49,7 +51,10 @@ public class CurrentWeatherPane extends GridPane {
 	
 	@Inject
 	private IconButton btnSwap;
-
+	
+	@Inject
+	private EventManager eventManager;
+	
 	@Inject
 	public CurrentWeatherPane(Injector injector) {
 		injector.injectMembers(this);
@@ -103,7 +108,7 @@ public class CurrentWeatherPane extends GridPane {
 		windGrid.add(lblWind, 0, 0);
 		windGrid.add(wind, 0, 1);
 		btnSwap.setLabel('⇄');
-		btnSwap.setOnAction(_ -> logger.debug(() -> "Forecast"));
+		btnSwap.setOnAction(_ -> eventManager.post(new CcEvent("weather", "forecast")));
 		windGrid.add(btnSwap, 1, 0, 1, 2);
 		return windGrid;
 	}
