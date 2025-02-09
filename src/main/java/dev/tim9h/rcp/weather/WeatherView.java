@@ -254,6 +254,7 @@ public class WeatherView implements CCard {
 			if (forecastPane.getStyleClass().contains(CSS_CLASS_ACCENT_CARD)) {
 				forecastPane.getStyleClass().remove(CSS_CLASS_ACCENT_CARD);
 			}
+			eventManager.clearAsync();
 		}
 	}
 
