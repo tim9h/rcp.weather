@@ -23,7 +23,7 @@ import dev.tim9h.rcp.weather.bean.ows.ForecastBean;
 import dev.tim9h.rcp.weather.bean.ows.Geocode;
 import dev.tim9h.rcp.weather.bean.ows.LocationName;
 import dev.tim9h.rcp.weather.bean.ows.OwsWeatherBean;
-import dev.tim9h.rcp.weather.bean.ows.WeatherCollector;
+import dev.tim9h.rcp.weather.util.WeatherCollector;
 
 public class OpenWeatherMapService implements WeatherService {
 

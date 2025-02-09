@@ -1,4 +1,4 @@
-package dev.tim9h.rcp.weather.bean.ows;
+package dev.tim9h.rcp.weather.util;
 
 import java.time.Instant;
 import java.time.LocalDate;
@@ -13,6 +13,7 @@ import java.util.function.Supplier;
 import java.util.stream.Collector;
 
 import dev.tim9h.rcp.weather.bean.DayWeatherBean;
+import dev.tim9h.rcp.weather.bean.ows.OwsWeatherBean;
 
 public class WeatherCollector
 		implements Collector<OwsWeatherBean, Map<LocalDate, DayWeatherBean>, Map<LocalDate, DayWeatherBean>> {
