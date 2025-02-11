@@ -13,4 +13,5 @@ module rcp.weather {
 	requires javafx.graphics;
 	requires transitive rcp.controls;
 	requires java.base;
+	requires javafx.base;
 }
