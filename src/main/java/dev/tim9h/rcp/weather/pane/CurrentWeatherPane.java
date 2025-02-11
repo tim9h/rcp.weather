@@ -19,13 +19,16 @@ import dev.tim9h.rcp.logging.InjectLogger;
 import dev.tim9h.rcp.settings.Settings;
 import dev.tim9h.rcp.weather.WeatherViewFactory;
 import dev.tim9h.rcp.weather.bean.WeatherBean;
+import dev.tim9h.rcp.weather.util.WeatherSymbolConverter;
 import dev.tim9h.rcp.weather.util.WeatherUtils;
 import javafx.application.Platform;
+import javafx.beans.binding.Bindings;
 import javafx.geometry.HPos;
 import javafx.scene.control.Hyperlink;
 import javafx.scene.control.Label;
 import javafx.scene.layout.ColumnConstraints;
 import javafx.scene.layout.GridPane;
+import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 
@@ -48,17 +51,17 @@ public class CurrentWeatherPane extends GridPane {
 
 	@InjectLogger
 	private Logger logger;
-	
+
 	@Inject
 	private IconButton btnSwap;
-	
+
 	@Inject
 	private EventManager eventManager;
-	
+
 	@Inject
 	public CurrentWeatherPane(Injector injector) {
 		injector.injectMembers(this);
-		
+
 		getStyleClass().add("ccCard");
 		var col = new ColumnConstraints();
 		col.setPercentWidth(23.3);
@@ -85,8 +88,13 @@ public class CurrentWeatherPane extends GridPane {
 		lblWind.getStyleClass().add(CSS_CLASS_SECONDARY);
 		wind = new Label();
 
+		var symbol = new Label();
+		symbol.getStyleClass().add(CSS_CLASS_SECONDARY);
+		symbol.textProperty().bind(Bindings.createStringBinding(() -> WeatherSymbolConverter.getSymbol(description.getText()), description.textProperty()));
+		var descriptionBox = new HBox(symbol, description);
+
 		add(temperature, 0, 0);
-		add(description, 0, 1);
+		add(descriptionBox, 0, 1);
 
 		add(lblPrecipitation, 1, 0);
 		add(precipitation, 1, 1);
@@ -100,11 +108,11 @@ public class CurrentWeatherPane extends GridPane {
 
 	private GridPane createSwapButtonWrapper(Label lblWind) {
 		var windGrid = new GridPane();
-        var windCC = new ColumnConstraints();
-        windCC.setHgrow(Priority.ALWAYS); 
-        var btnCC = new ColumnConstraints();
-        btnCC.setPrefWidth(Region.USE_COMPUTED_SIZE);
-        windGrid.getColumnConstraints().addAll(windCC, btnCC);
+		var windCC = new ColumnConstraints();
+		windCC.setHgrow(Priority.ALWAYS);
+		var btnCC = new ColumnConstraints();
+		btnCC.setPrefWidth(Region.USE_COMPUTED_SIZE);
+		windGrid.getColumnConstraints().addAll(windCC, btnCC);
 		windGrid.add(lblWind, 0, 0);
 		windGrid.add(wind, 0, 1);
 		btnSwap.setLabel('⇄');

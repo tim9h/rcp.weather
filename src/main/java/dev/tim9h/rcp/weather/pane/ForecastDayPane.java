@@ -1,6 +1,7 @@
 package dev.tim9h.rcp.weather.pane;
 
-import dev.tim9h.rcp.weather.util.WeatherGroupSymbolConverter;
+import dev.tim9h.rcp.weather.util.WeatherSymbolConverter;
+import javafx.beans.binding.Bindings;
 import javafx.geometry.Insets;
 import javafx.scene.Node;
 import javafx.scene.control.Label;
@@ -34,7 +35,8 @@ public class ForecastDayPane {
 		top = new HBox(weekday, tempMax, tempMin);
 		top.setSpacing(0.0);
 		var symbol = new Label();
-		symbol.textProperty().bindBidirectional(condition.textProperty(), new WeatherGroupSymbolConverter());
+		symbol.textProperty().bind(Bindings.createStringBinding(
+				() -> WeatherSymbolConverter.getSymbol(condition.getText()), condition.textProperty()));
 		symbol.getStyleClass().add(CSS_CLASS_SECONDARY);
 		bottom = new HBox(symbol, condition);
 		HBox.setMargin(top, new Insets(0));
