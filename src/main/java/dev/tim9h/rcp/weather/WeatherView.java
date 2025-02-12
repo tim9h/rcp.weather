@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.util.Optional;
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.concurrent.CompletableFuture;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.Logger;
@@ -193,47 +194,49 @@ public class WeatherView implements CCard {
 
 	private void updateWeatherData() {
 		var units = settings.getString(WeatherViewFactory.SETTING_UNITS);
-		var coordinate = getCoord();
-		if (StringUtils.isNotBlank(units) && coordinate != null) {
-			var weather = weatherService.getCurrentWeather(coordinate.lat(), coordinate.lon(), units);
-			currentWeatherPane.update(weather, units);
-			var forecast = weatherService.getForecast(coordinate.lat(), coordinate.lon(), units);
-			forecastPane.update(forecast);
-		} else {
-			eventManager.echoAsync("Unable to refresh weather");
-			logger.warn(() -> "Weather settings missing");
-		}
+		CompletableFuture.supplyAsync(this::getCoord).thenAcceptAsync(coordinate -> {
+			if (StringUtils.isNotBlank(units) && coordinate != null) {
+				var weather = weatherService.getCurrentWeather(coordinate.lat(), coordinate.lon(), units);
+				currentWeatherPane.update(weather, units);
+				var forecast = weatherService.getForecast(coordinate.lat(), coordinate.lon(), units);
+				forecastPane.update(forecast);
+			} else {
+				eventManager.echoAsync("Unable to refresh weather");
+				logger.warn(() -> "Weather settings missing");
+			}
+		});
 	}
 
 	private void updateWeatherDataTemporary(String temporaryLocation) {
 		tempLocation = temporaryLocation;
 		var units = settings.getString(WeatherViewFactory.SETTING_UNITS);
 		if (StringUtils.isNotBlank(units) && StringUtils.isNotBlank(temporaryLocation)) {
-			var coordinate = weatherService.getCoordinate(temporaryLocation);
-			if (coordinate != null) {
-				setTemporaryHighlight(true);
-				var mode = settings.getString(WeatherViewFactory.SETTING_WEATHER_MODE);
-				if (FORECAST.equals(mode)) {
-					eventManager.echoAsync(SHOWING_WEATHER_FORECAST_FOR, StringUtils.capitalize(temporaryLocation));
-				} else {
-					eventManager.echoAsync(SHOWING_WEATHER_FOR, StringUtils.capitalize(temporaryLocation));
-				}
-				var weather = weatherService.getCurrentWeather(coordinate.lat(), coordinate.lon(), units);
-				currentWeatherPane.update(weather, units);
-				var forecast = weatherService.getForecast(coordinate.lat(), coordinate.lon(), units);
-				forecastPane.update(forecast);
-
-				new Timer().schedule(new TimerTask() {
-					@Override
-					public void run() {
-						updateWeatherData();
-						setTemporaryHighlight(false);
-						tempLocation = null;
+			CompletableFuture.supplyAsync(() -> weatherService.getCoordinate(temporaryLocation)).thenAcceptAsync(coordinate -> {
+				if (coordinate != null) {
+					setTemporaryHighlight(true);
+					var mode = settings.getString(WeatherViewFactory.SETTING_WEATHER_MODE);
+					if (FORECAST.equals(mode)) {
+						eventManager.echoAsync(SHOWING_WEATHER_FORECAST_FOR, StringUtils.capitalize(temporaryLocation));
+					} else {
+						eventManager.echoAsync(SHOWING_WEATHER_FOR, StringUtils.capitalize(temporaryLocation));
 					}
-				}, settings.getInt(WeatherViewFactory.SETTING_TEMPORARY_WEATHER_DURATION));
-			} else {
-				eventManager.echoAsync("Location not found", temporaryLocation);
-			}
+					var weather = weatherService.getCurrentWeather(coordinate.lat(), coordinate.lon(), units);
+					currentWeatherPane.update(weather, units);
+					var forecast = weatherService.getForecast(coordinate.lat(), coordinate.lon(), units);
+					forecastPane.update(forecast);
+					
+					new Timer().schedule(new TimerTask() {
+						@Override
+						public void run() {
+							updateWeatherData();
+							setTemporaryHighlight(false);
+							tempLocation = null;
+						}
+					}, settings.getInt(WeatherViewFactory.SETTING_TEMPORARY_WEATHER_DURATION));
+				} else {
+					eventManager.echoAsync("Location not found", temporaryLocation);
+				}
+			});
 		} else {
 			eventManager.echo("Units or location missing");
 		}
