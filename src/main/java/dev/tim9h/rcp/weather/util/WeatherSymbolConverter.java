@@ -8,7 +8,7 @@ public class WeatherSymbolConverter {
 
 	public static String getSymbol(String condition) {
 		return switch (condition.toLowerCase()) {
-		case "clear", "" -> "☀";
+		case "clear", "clear sky" -> "☀";
 		case "clouds", "few clouds", "scattered clouds", "broken clouds", "overcast clouds" -> "☁";
 		case "rain", "light rain", "moderate rain", "heavy intensity rain", "very heavy rain", "extreme rain",
 				"freezing rain", "light intensity shower rain", "shower rain", "heavy intensity shower rain",
