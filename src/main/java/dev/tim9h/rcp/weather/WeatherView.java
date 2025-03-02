@@ -182,14 +182,18 @@ public class WeatherView implements CCard {
 		if (wrapper.getChildren().contains(forecastPane)) {
 			wrapper.getChildren().remove(forecastPane);
 		}
-		wrapper.getChildren().add(currentWeatherPane);
+		if (!wrapper.getChildren().contains(currentWeatherPane)) {
+			wrapper.getChildren().add(currentWeatherPane);
+		}
 	}
 
 	private void showWeatherForecastPanel() {
 		if (wrapper.getChildren().contains(currentWeatherPane)) {
 			wrapper.getChildren().remove(currentWeatherPane);
 		}
-		wrapper.getChildren().add(forecastPane);
+		if (!wrapper.getChildren().contains(forecastPane)) {
+			wrapper.getChildren().add(forecastPane);
+		}
 	}
 
 	private void updateWeatherData() {
