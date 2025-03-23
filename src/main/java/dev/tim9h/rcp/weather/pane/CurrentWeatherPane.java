@@ -78,13 +78,13 @@ public class CurrentWeatherPane extends GridPane {
 		});
 		temperature.getStyleClass().add("accent-label");
 		description = new Label();
-		var lblPrecipitation = new Label("Precipitation");
+		var lblPrecipitation = new Label("☔ Precipitation");
 		lblPrecipitation.getStyleClass().add(CSS_CLASS_SECONDARY);
 		precipitation = new Label();
-		var lblHumidiy = new Label("Humidity");
+		var lblHumidiy = new Label("⛆ Humidity");
 		lblHumidiy.getStyleClass().add(CSS_CLASS_SECONDARY);
 		humidity = new Label();
-		var lblWind = new Label("Wind");
+		var lblWind = new Label("⇶ Wind");
 		lblWind.getStyleClass().add(CSS_CLASS_SECONDARY);
 		wind = new Label();
 
