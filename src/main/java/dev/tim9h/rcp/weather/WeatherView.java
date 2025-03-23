@@ -137,7 +137,7 @@ public class WeatherView implements CCard {
 			// display weather for temporary location
 			var location = (String) data[0];
 			if (settings.getString(WeatherViewFactory.SETTING_WEATHER_MODE).equals(FORECAST)) {
-				eventManager.echoAsync(SHOWING_WEATHER_FORECAST_FOR, location);
+				eventManager.echo(SHOWING_WEATHER_FORECAST_FOR, location);
 			} else {
 				eventManager.echo(SHOWING_WEATHER_FOR, location);
 			}
@@ -148,7 +148,7 @@ public class WeatherView implements CCard {
 	private void displayWeatherLocation() {
 		var location = settings.getString(WeatherViewFactory.SETTING_LOCATION);
 		if (StringUtils.isNotBlank(location)) {
-			eventManager.echoAsync("Weather location set to", location);
+			eventManager.echo("Weather location set to", location);
 		} else {
 			eventManager.echo("Unable to show weather location");
 			logger.warn(() -> "Weather location missing");
@@ -205,7 +205,7 @@ public class WeatherView implements CCard {
 				var forecast = weatherService.getForecast(coordinate.lat(), coordinate.lon(), units);
 				forecastPane.update(forecast);
 			} else {
-				eventManager.echoAsync("Unable to refresh weather");
+				eventManager.echo("Unable to refresh weather");
 				logger.warn(() -> "Weather settings missing");
 			}
 		});
@@ -215,32 +215,34 @@ public class WeatherView implements CCard {
 		tempLocation = temporaryLocation;
 		var units = settings.getString(WeatherViewFactory.SETTING_UNITS);
 		if (StringUtils.isNotBlank(units) && StringUtils.isNotBlank(temporaryLocation)) {
-			CompletableFuture.supplyAsync(() -> weatherService.getCoordinate(temporaryLocation)).thenAcceptAsync(coordinate -> {
-				if (coordinate != null) {
-					setTemporaryHighlight(true);
-					var mode = settings.getString(WeatherViewFactory.SETTING_WEATHER_MODE);
-					if (FORECAST.equals(mode)) {
-						eventManager.echoAsync(SHOWING_WEATHER_FORECAST_FOR, StringUtils.capitalize(temporaryLocation));
-					} else {
-						eventManager.echoAsync(SHOWING_WEATHER_FOR, StringUtils.capitalize(temporaryLocation));
-					}
-					var weather = weatherService.getCurrentWeather(coordinate.lat(), coordinate.lon(), units);
-					currentWeatherPane.update(weather, units);
-					var forecast = weatherService.getForecast(coordinate.lat(), coordinate.lon(), units);
-					forecastPane.update(forecast);
-					
-					new Timer().schedule(new TimerTask() {
-						@Override
-						public void run() {
-							updateWeatherData();
-							setTemporaryHighlight(false);
-							tempLocation = null;
+			CompletableFuture.supplyAsync(() -> weatherService.getCoordinate(temporaryLocation))
+					.thenAcceptAsync(coordinate -> {
+						if (coordinate != null) {
+							setTemporaryHighlight(true);
+							var mode = settings.getString(WeatherViewFactory.SETTING_WEATHER_MODE);
+							if (FORECAST.equals(mode)) {
+								eventManager.echo(SHOWING_WEATHER_FORECAST_FOR,
+										StringUtils.capitalize(temporaryLocation));
+							} else {
+								eventManager.echo(SHOWING_WEATHER_FOR, StringUtils.capitalize(temporaryLocation));
+							}
+							var weather = weatherService.getCurrentWeather(coordinate.lat(), coordinate.lon(), units);
+							currentWeatherPane.update(weather, units);
+							var forecast = weatherService.getForecast(coordinate.lat(), coordinate.lon(), units);
+							forecastPane.update(forecast);
+
+							new Timer().schedule(new TimerTask() {
+								@Override
+								public void run() {
+									updateWeatherData();
+									setTemporaryHighlight(false);
+									tempLocation = null;
+								}
+							}, settings.getInt(WeatherViewFactory.SETTING_TEMPORARY_WEATHER_DURATION));
+						} else {
+							eventManager.echo("Location not found", temporaryLocation);
 						}
-					}, settings.getInt(WeatherViewFactory.SETTING_TEMPORARY_WEATHER_DURATION));
-				} else {
-					eventManager.echoAsync("Location not found", temporaryLocation);
-				}
-			});
+					});
 		} else {
 			eventManager.echo("Units or location missing");
 		}
