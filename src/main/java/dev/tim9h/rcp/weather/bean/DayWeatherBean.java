@@ -74,4 +74,10 @@ public class DayWeatherBean {
 		this.condition = condition;
 	}
 
+	@Override
+	public String toString() {
+		return "DayWeatherBean [tempMin=" + tempMin + ", tempMax=" + tempMax + ", descriptions=" + descriptions
+				+ ", condition=" + condition + "]";
+	}
+
 }
