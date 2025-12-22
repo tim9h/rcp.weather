@@ -15,8 +15,8 @@ import com.google.inject.Injector;
 import dev.tim9h.rcp.event.EventManager;
 import dev.tim9h.rcp.logging.InjectLogger;
 import dev.tim9h.rcp.settings.Settings;
-import dev.tim9h.rcp.spi.CCard;
 import dev.tim9h.rcp.spi.Gravity;
+import dev.tim9h.rcp.spi.Plugin;
 import dev.tim9h.rcp.spi.Position;
 import dev.tim9h.rcp.spi.TreeNode;
 import dev.tim9h.rcp.weather.bean.Coordinate;
@@ -27,7 +27,7 @@ import javafx.scene.Node;
 import javafx.scene.layout.Pane;
 import javafx.scene.layout.StackPane;
 
-public class WeatherView implements CCard {
+public class WeatherView implements Plugin {
 
 	private static final String SHOWING_WEATHER_FORECAST_FOR = "Showing weather forecast for";
 
@@ -102,7 +102,7 @@ public class WeatherView implements CCard {
 
 	@Override
 	public void initBus(EventManager em) {
-		CCard.super.initBus(eventManager);
+		Plugin.super.initBus(eventManager);
 		em.listen(WEATHER, this::handleWeatherCommands);
 	}
 
