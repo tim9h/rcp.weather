@@ -17,7 +17,7 @@ import dev.tim9h.rcp.event.CcEvent;
 import dev.tim9h.rcp.event.EventManager;
 import dev.tim9h.rcp.logging.InjectLogger;
 import dev.tim9h.rcp.settings.Settings;
-import dev.tim9h.rcp.weather.WeatherViewFactory;
+import dev.tim9h.rcp.weather.WeatherView;
 import dev.tim9h.rcp.weather.bean.WeatherBean;
 import dev.tim9h.rcp.weather.util.WeatherSymbolConverter;
 import dev.tim9h.rcp.weather.util.WeatherUtils;
@@ -73,7 +73,7 @@ public class CurrentWeatherPane extends GridPane {
 
 		temperature = new Hyperlink();
 		temperature.setOnAction(_ -> {
-			var location = settings.getString(WeatherViewFactory.SETTING_LOCATION);
+			var location = settings.getString(WeatherView.SETTING_LOCATION);
 			openUrl("https://www.google.com/search?q=weather+%s", encodeValue(location));
 		});
 		temperature.getStyleClass().add("accent-label");
@@ -90,7 +90,8 @@ public class CurrentWeatherPane extends GridPane {
 
 		var symbol = new Label();
 		symbol.getStyleClass().add(CSS_CLASS_SECONDARY);
-		symbol.textProperty().bind(Bindings.createStringBinding(() -> WeatherSymbolConverter.getSymbol(description.getText()), description.textProperty()));
+		symbol.textProperty().bind(Bindings.createStringBinding(
+				() -> WeatherSymbolConverter.getSymbol(description.getText()), description.textProperty()));
 		var descriptionBox = new HBox(symbol, description);
 
 		add(temperature, 0, 0);

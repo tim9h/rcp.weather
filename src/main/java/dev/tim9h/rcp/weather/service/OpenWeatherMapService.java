@@ -15,7 +15,7 @@ import com.google.inject.Inject;
 
 import dev.tim9h.rcp.logging.InjectLogger;
 import dev.tim9h.rcp.settings.Settings;
-import dev.tim9h.rcp.weather.WeatherViewFactory;
+import dev.tim9h.rcp.weather.WeatherView;
 import dev.tim9h.rcp.weather.bean.Coordinate;
 import dev.tim9h.rcp.weather.bean.Forecast;
 import dev.tim9h.rcp.weather.bean.WeatherBean;
@@ -46,7 +46,7 @@ public class OpenWeatherMapService implements WeatherService {
 
 	@Override
 	public WeatherBean getCurrentWeather(Double lat, Double lon, String units) {
-		var apiKey = settings.getString(WeatherViewFactory.SETTING_OPENWEATHERMAP_APIKEY);
+		var apiKey = settings.getString(WeatherView.SETTING_OPENWEATHERMAP_APIKEY);
 		try (var in = new BufferedReader(new InputStreamReader(getConnection(
 				String.format("https://api.openweathermap.org/data/2.5/weather?lat=%s&lon=%s&appid=%s&units=%s", lat,
 						lon, apiKey, units))
@@ -81,7 +81,7 @@ public class OpenWeatherMapService implements WeatherService {
 
 	@Override
 	public Coordinate getCoordinate(String location) {
-		var apiKey = settings.getString(WeatherViewFactory.SETTING_OPENWEATHERMAP_APIKEY);
+		var apiKey = settings.getString(WeatherView.SETTING_OPENWEATHERMAP_APIKEY);
 		try (var in = new BufferedReader(new InputStreamReader(getConnection(
 				String.format("https://api.openweathermap.org/geo/1.0/direct?q=%s&appid=%s", location, apiKey))
 				.getInputStream()))) {
@@ -100,7 +100,7 @@ public class OpenWeatherMapService implements WeatherService {
 
 	@Override
 	public String getLocation(Double lat, Double lon) {
-		var apiKey = settings.getString(WeatherViewFactory.SETTING_OPENWEATHERMAP_APIKEY);
+		var apiKey = settings.getString(WeatherView.SETTING_OPENWEATHERMAP_APIKEY);
 		try (var in = new BufferedReader(new InputStreamReader(getConnection(String.format(
 				"https://api.openweathermap.org/geo/1.0/reverse?lat=%f&lon=%f&limit=1&appid=%s", lat, lon, apiKey))
 				.getInputStream()))) {
@@ -114,7 +114,7 @@ public class OpenWeatherMapService implements WeatherService {
 
 	@Override
 	public Forecast getForecast(Double lat, Double lon, String units) {
-		var apiKey = settings.getString(WeatherViewFactory.SETTING_OPENWEATHERMAP_APIKEY);
+		var apiKey = settings.getString(WeatherView.SETTING_OPENWEATHERMAP_APIKEY);
 		try (var in = new BufferedReader(new InputStreamReader(getConnection(
 				String.format("https://api.openweathermap.org/data/2.5/forecast?lat=%f&lon=%f&appid=%s&units=%s", lat,
 						lon, apiKey, units))
