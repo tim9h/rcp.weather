@@ -181,10 +181,6 @@ public class WeatherView implements Plugin {
 		return coord;
 	}
 
-	public void foo(String test) {
-		logger.debug(() -> test);
-	}
-
 	private void showCurrentWeatherPanel() {
 		if (wrapper.getChildren().contains(forecastPane)) {
 			wrapper.getChildren().remove(forecastPane);
