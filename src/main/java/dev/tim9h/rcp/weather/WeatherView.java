@@ -16,10 +16,11 @@ import com.google.inject.Inject;
 import dev.tim9h.rcp.event.EventManager;
 import dev.tim9h.rcp.logging.InjectLogger;
 import dev.tim9h.rcp.settings.Settings;
+import dev.tim9h.rcp.spi.CommandBuilder;
+import dev.tim9h.rcp.spi.CommandNode;
 import dev.tim9h.rcp.spi.Gravity;
 import dev.tim9h.rcp.spi.Plugin;
 import dev.tim9h.rcp.spi.Position;
-import dev.tim9h.rcp.spi.TreeNode;
 import dev.tim9h.rcp.weather.bean.Coordinate;
 import dev.tim9h.rcp.weather.pane.CurrentWeatherPane;
 import dev.tim9h.rcp.weather.pane.ForecastPane;
@@ -109,49 +110,6 @@ public class WeatherView implements Plugin {
 		return new Gravity(10, Position.TOP);
 	}
 
-	@Override
-	public void initBus(EventManager em) {
-		Plugin.super.initBus(eventManager);
-		em.listen(WEATHER, this::handleWeatherCommands);
-	}
-
-	private void handleWeatherCommands(Object[] data) {
-		if (data == null) {
-			eventManager.echo("Where?");
-		} else if ("location".equals(data[0])) {
-			if (data.length > 1) {
-				// update weather location
-				var location = StringUtils.capitalize((String) data[1]);
-				settings.persist(WeatherView.SETTING_LOCATION, location);
-				eventManager.echo("Weather location set to", location);
-				coord = null;
-				updateWeatherData();
-			} else {
-				displayWeatherLocation();
-			}
-		} else if (FORECAST.equals(data[0])) {
-			settings.persist(WeatherView.SETTING_WEATHER_MODE, FORECAST);
-			var location = StringUtils.defaultIfBlank(tempLocation, settings.getString(WeatherView.SETTING_LOCATION));
-			eventManager.echo(SHOWING_WEATHER_FORECAST_FOR, StringUtils.capitalize(location));
-			showWeatherForecastPanel();
-
-		} else if (CURRENT.equals(data[0])) {
-			settings.persist(WeatherView.SETTING_WEATHER_MODE, CURRENT);
-			var location = StringUtils.defaultIfBlank(tempLocation, settings.getString(WeatherView.SETTING_LOCATION));
-			eventManager.echo(SHOWING_WEATHER_FOR, StringUtils.capitalize(location));
-			showCurrentWeatherPanel();
-		} else {
-			// display weather for temporary location
-			var location = (String) data[0];
-			if (settings.getString(WeatherView.SETTING_WEATHER_MODE).equals(FORECAST)) {
-				eventManager.echo(SHOWING_WEATHER_FORECAST_FOR, location);
-			} else {
-				eventManager.echo(SHOWING_WEATHER_FOR, location);
-			}
-			updateWeatherDataTemporary(location);
-		}
-	}
-
 	private void displayWeatherLocation() {
 		var location = settings.getString(WeatherView.SETTING_LOCATION);
 		if (StringUtils.isNotBlank(location)) {
@@ -163,10 +121,31 @@ public class WeatherView implements Plugin {
 	}
 
 	@Override
-	public Optional<TreeNode<String>> getModelessCommands() {
-		var node = new TreeNode<>(WEATHER);
-		node.add("location", FORECAST, CURRENT);
-		return Optional.of(node);
+	public Optional<CommandNode> getCommands() {
+		return new CommandBuilder().command(WEATHER, _ -> eventManager.echo("Where?")).arguments().action(arg -> {
+			var location = StringUtils.capitalize(arg);
+			eventManager.echo(
+					settings.getString(WeatherView.SETTING_WEATHER_MODE).equals(FORECAST) ? SHOWING_WEATHER_FORECAST_FOR
+							: SHOWING_WEATHER_FOR,
+					location);
+			updateWeatherDataTemporary(location);
+		}).child(FORECAST, _ -> {
+			settings.persist(WeatherView.SETTING_WEATHER_MODE, FORECAST);
+			var location = StringUtils.defaultIfBlank(tempLocation, settings.getString(WeatherView.SETTING_LOCATION));
+			eventManager.echo(SHOWING_WEATHER_FORECAST_FOR, StringUtils.capitalize(location));
+			showWeatherForecastPanel();
+		}).child(CURRENT, _ -> {
+			settings.persist(WeatherView.SETTING_WEATHER_MODE, CURRENT);
+			var location = StringUtils.defaultIfBlank(tempLocation, settings.getString(WeatherView.SETTING_LOCATION));
+			eventManager.echo(SHOWING_WEATHER_FOR, StringUtils.capitalize(location));
+			showCurrentWeatherPanel();
+		}).command("location", _ -> displayWeatherLocation()).arguments().action(arg -> {
+			var location = StringUtils.capitalize(arg);
+			settings.persist(WeatherView.SETTING_LOCATION, location);
+			eventManager.echo("Weather location set to", location);
+			coord = null;
+			updateWeatherData();
+		}).up().build();
 	}
 
 	private Coordinate getCoord() {
@@ -243,6 +222,7 @@ public class WeatherView implements Plugin {
 								}
 							}, settings.getInt(WeatherView.SETTING_TEMPORARY_WEATHER_DURATION));
 						} else {
+							tempLocation = null;
 							eventManager.echo("Location not found", temporaryLocation);
 						}
 					});
