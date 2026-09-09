@@ -4,9 +4,14 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Timer;
-import java.util.TimerTask;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.Logger;
@@ -22,9 +27,12 @@ import dev.tim9h.rcp.spi.Gravity;
 import dev.tim9h.rcp.spi.Plugin;
 import dev.tim9h.rcp.spi.Position;
 import dev.tim9h.rcp.weather.bean.Coordinate;
+import dev.tim9h.rcp.weather.bean.Forecast;
+import dev.tim9h.rcp.weather.bean.WeatherBean;
 import dev.tim9h.rcp.weather.pane.CurrentWeatherPane;
 import dev.tim9h.rcp.weather.pane.ForecastPane;
 import dev.tim9h.rcp.weather.service.WeatherService;
+import javafx.application.Platform;
 import javafx.scene.Node;
 import javafx.scene.layout.Pane;
 import javafx.scene.layout.StackPane;
@@ -53,6 +61,8 @@ public class WeatherView implements Plugin {
 
 	private static final String WEATHER = "weather";
 
+	private static final long REFRESH_INTERVAL_MINUTES = 5;
+
 	@InjectLogger
 	private Logger logger;
 
@@ -65,17 +75,29 @@ public class WeatherView implements Plugin {
 	@Inject
 	private WeatherService weatherService;
 
-	private Coordinate coord;
-
-	private Pane wrapper;
-
 	@Inject
 	private ForecastPane forecastPane;
 
 	@Inject
 	private CurrentWeatherPane currentWeatherPane;
 
-	private String tempLocation;
+	private final AtomicBoolean refreshInProgress = new AtomicBoolean();
+
+	private final AtomicLong requestGeneration = new AtomicLong();
+
+	private volatile Coordinate coord;
+
+	private volatile String tempLocation;
+
+	private Pane wrapper;
+
+	private ScheduledExecutorService scheduler;
+
+	private ExecutorService weatherExecutor;
+
+	private ScheduledFuture<?> temporaryWeatherTask;
+
+	private volatile boolean shuttingDown;
 
 	@Override
 	public String getName() {
@@ -84,19 +106,24 @@ public class WeatherView implements Plugin {
 
 	@Override
 	public void init() {
-		var timer = new Timer("weatherRefresher", true);
-		timer.scheduleAtFixedRate(new TimerTask() {
-			@Override
-			public void run() {
-				updateWeatherData();
-			}
-		}, 0, 300000);
+		shuttingDown = false;
+		scheduler = Executors.newSingleThreadScheduledExecutor(r -> {
+			var thread = new Thread(r, "weather-scheduler");
+			thread.setDaemon(true);
+			return thread;
+		});
+		weatherExecutor = Executors.newSingleThreadExecutor(r -> {
+			var thread = new Thread(r, "weather-worker");
+			thread.setDaemon(true);
+			return thread;
+		});
+		scheduler.scheduleAtFixedRate(this::updateWeatherData, 0, REFRESH_INTERVAL_MINUTES, TimeUnit.MINUTES);
 	}
 
 	@Override
 	public Optional<Node> getNode() throws IOException {
 		wrapper = new StackPane();
-		var mode = settings.getString(WeatherView.SETTING_WEATHER_MODE);
+		var mode = settings.getString(SETTING_WEATHER_MODE);
 		if (FORECAST.equals(mode)) {
 			showWeatherForecastPanel();
 		} else {
@@ -110,8 +137,27 @@ public class WeatherView implements Plugin {
 		return new Gravity(10, Position.TOP);
 	}
 
+	@Override
+	public void onShutdown() {
+		shuttingDown = true;
+		requestGeneration.incrementAndGet();
+		if (temporaryWeatherTask != null) {
+			temporaryWeatherTask.cancel(false);
+			temporaryWeatherTask = null;
+		}
+		if (scheduler != null) {
+			scheduler.shutdownNow();
+			scheduler = null;
+		}
+		if (weatherExecutor != null) {
+			weatherExecutor.shutdownNow();
+			weatherExecutor = null;
+		}
+	}
+
 	private void displayWeatherLocation() {
-		var location = settings.getString(WeatherView.SETTING_LOCATION);
+		var location = settings.getString(SETTING_LOCATION);
+
 		if (StringUtils.isNotBlank(location)) {
 			eventManager.echo("Weather location set to", location);
 		} else {
@@ -122,26 +168,24 @@ public class WeatherView implements Plugin {
 
 	@Override
 	public Optional<CommandNode> getCommands() {
-		return new CommandBuilder().command(WEATHER, _ -> eventManager.echo("Where?")).arguments().action(arg -> {
+		return new CommandBuilder().command(WEATHER, _ -> eventManager.echo("Where?")).argumentAction(arg -> {
 			var location = StringUtils.capitalize(arg);
-			eventManager.echo(
-					settings.getString(WeatherView.SETTING_WEATHER_MODE).equals(FORECAST) ? SHOWING_WEATHER_FORECAST_FOR
-							: SHOWING_WEATHER_FOR,
-					location);
+			eventManager.echo(settings.getString(SETTING_WEATHER_MODE).equals(FORECAST) ? SHOWING_WEATHER_FORECAST_FOR
+					: SHOWING_WEATHER_FOR, location);
 			updateWeatherDataTemporary(location);
 		}).child(FORECAST, _ -> {
-			settings.persist(WeatherView.SETTING_WEATHER_MODE, FORECAST);
-			var location = StringUtils.defaultIfBlank(tempLocation, settings.getString(WeatherView.SETTING_LOCATION));
+			settings.persist(SETTING_WEATHER_MODE, FORECAST);
+			var location = StringUtils.defaultIfBlank(tempLocation, settings.getString(SETTING_LOCATION));
 			eventManager.echo(SHOWING_WEATHER_FORECAST_FOR, StringUtils.capitalize(location));
 			showWeatherForecastPanel();
-		}).child(CURRENT, _ -> {
-			settings.persist(WeatherView.SETTING_WEATHER_MODE, CURRENT);
-			var location = StringUtils.defaultIfBlank(tempLocation, settings.getString(WeatherView.SETTING_LOCATION));
+		}).up().child(CURRENT, _ -> {
+			settings.persist(SETTING_WEATHER_MODE, CURRENT);
+			var location = StringUtils.defaultIfBlank(tempLocation, settings.getString(SETTING_LOCATION));
 			eventManager.echo(SHOWING_WEATHER_FOR, StringUtils.capitalize(location));
 			showCurrentWeatherPanel();
-		}).command("location", _ -> displayWeatherLocation()).arguments().action(arg -> {
+		}).up().command("location", _ -> displayWeatherLocation()).argumentAction(arg -> {
 			var location = StringUtils.capitalize(arg);
-			settings.persist(WeatherView.SETTING_LOCATION, location);
+			settings.persist(SETTING_LOCATION, location);
 			eventManager.echo("Weather location set to", location);
 			coord = null;
 			updateWeatherData();
@@ -149,89 +193,173 @@ public class WeatherView implements Plugin {
 	}
 
 	private Coordinate getCoord() {
-		if (coord == null) {
-			var location = settings.getString(WeatherView.SETTING_LOCATION);
-			if (StringUtils.isNotBlank(location)) {
-				coord = weatherService.getCoordinate(location);
-			} else {
-				logger.warn(() -> "Unable to update weather: location not set");
-			}
+		var cachedCoordinate = coord;
+		if (cachedCoordinate != null) {
+			return cachedCoordinate;
 		}
-		return coord;
+		var location = settings.getString(SETTING_LOCATION);
+		if (StringUtils.isBlank(location)) {
+			logger.warn(() -> "Unable to update weather: location not set");
+			return null;
+		}
+		var newCoordinate = weatherService.getCoordinate(location);
+		if (newCoordinate != null) {
+			coord = newCoordinate;
+		}
+		return newCoordinate;
 	}
 
 	private void showCurrentWeatherPanel() {
-		if (wrapper.getChildren().contains(forecastPane)) {
-			wrapper.getChildren().remove(forecastPane);
-		}
-		if (!wrapper.getChildren().contains(currentWeatherPane)) {
-			wrapper.getChildren().add(currentWeatherPane);
-		}
+		wrapper.getChildren().setAll(currentWeatherPane);
 	}
 
 	private void showWeatherForecastPanel() {
-		if (wrapper.getChildren().contains(currentWeatherPane)) {
-			wrapper.getChildren().remove(currentWeatherPane);
-		}
-		if (!wrapper.getChildren().contains(forecastPane)) {
-			wrapper.getChildren().add(forecastPane);
-		}
+		wrapper.getChildren().setAll(forecastPane);
 	}
 
 	private void updateWeatherData() {
-		var units = settings.getString(WeatherView.SETTING_UNITS);
-		CompletableFuture.supplyAsync(this::getCoord).thenAcceptAsync(coordinate -> {
-			if (StringUtils.isNotBlank(units) && coordinate != null) {
-				var weather = weatherService.getCurrentWeather(coordinate.lat(), coordinate.lon(), units);
-				currentWeatherPane.update(weather, units);
-				var forecast = weatherService.getForecast(coordinate.lat(), coordinate.lon(), units);
-				forecastPane.update(forecast);
-			} else {
-				eventManager.echo("Unable to refresh weather");
-				logger.warn(() -> "Weather settings missing");
+		if (shuttingDown) {
+			return;
+		}
+		if (!refreshInProgress.compareAndSet(false, true)) {
+			logger.debug(() -> "Weather refresh already in progress");
+			return;
+		}
+		var generation = requestGeneration.get();
+		CompletableFuture.supplyAsync(this::loadWeatherData, weatherExecutor).thenAccept(data -> {
+			if (data == null || shuttingDown || generation != requestGeneration.get()) {
+				return;
+			}
+			Platform.runLater(() -> {
+				if (shuttingDown || generation != requestGeneration.get()) {
+					return;
+				}
+				if (data.currentWeather() != null) {
+					currentWeatherPane.update(data.currentWeather(), data.units());
+				}
+				if (data.forecast() != null) {
+					forecastPane.update(data.forecast());
+				}
+			});
+		}).whenComplete((_, error) -> {
+			refreshInProgress.set(false);
+			if (error != null && !shuttingDown) {
+				logger.error("Unable to update weather", error);
 			}
 		});
 	}
 
-	private void updateWeatherDataTemporary(String temporaryLocation) {
-		tempLocation = temporaryLocation;
-		var units = settings.getString(WeatherView.SETTING_UNITS);
-		if (StringUtils.isNotBlank(units) && StringUtils.isNotBlank(temporaryLocation)) {
-			CompletableFuture.supplyAsync(() -> weatherService.getCoordinate(temporaryLocation))
-					.thenAcceptAsync(coordinate -> {
-						if (coordinate != null) {
-							setTemporaryHighlight(true);
-							var mode = settings.getString(WeatherView.SETTING_WEATHER_MODE);
-							if (FORECAST.equals(mode)) {
-								eventManager.echo(SHOWING_WEATHER_FORECAST_FOR,
-										StringUtils.capitalize(temporaryLocation));
-							} else {
-								eventManager.echo(SHOWING_WEATHER_FOR, StringUtils.capitalize(temporaryLocation));
-							}
-							var weather = weatherService.getCurrentWeather(coordinate.lat(), coordinate.lon(), units);
-							currentWeatherPane.update(weather, units);
-							var forecast = weatherService.getForecast(coordinate.lat(), coordinate.lon(), units);
-							forecastPane.update(forecast);
+	private WeatherData loadWeatherData() {
+		var units = settings.getString(SETTING_UNITS);
+		if (StringUtils.isBlank(units)) {
+			logger.warn(() -> "Unable to update weather: units missing");
+			return null;
+		}
+		var coordinate = getCoord();
+		if (coordinate == null) {
+			logger.warn(() -> "Unable to update weather: coordinate unavailable");
+			return null;
+		}
+		var weather = weatherService.getCurrentWeather(coordinate.lat(), coordinate.lon(), units);
+		var forecast = weatherService.getForecast(coordinate.lat(), coordinate.lon(), units);
+		return new WeatherData(weather, forecast, units);
+	}
 
-							new Timer().schedule(new TimerTask() {
-								@Override
-								public void run() {
-									updateWeatherData();
-									setTemporaryHighlight(false);
-									tempLocation = null;
-								}
-							}, settings.getInt(WeatherView.SETTING_TEMPORARY_WEATHER_DURATION));
+	private void updateWeatherDataTemporary(String temporaryLocation) {
+		if (shuttingDown) {
+			return;
+		}
+		var units = settings.getString(SETTING_UNITS);
+		if (StringUtils.isBlank(units) || StringUtils.isBlank(temporaryLocation)) {
+			eventManager.echo("Units or location missing");
+			return;
+		}
+		var generation = requestGeneration.incrementAndGet();
+		tempLocation = temporaryLocation;
+		cancelTemporaryWeatherTask();
+		CompletableFuture.supplyAsync(() -> loadTemporaryWeatherData(temporaryLocation, units), weatherExecutor)
+				.thenAccept(data -> {
+					if (data == null || shuttingDown || generation != requestGeneration.get()) {
+						return;
+					}
+					Platform.runLater(() -> {
+						if (shuttingDown || generation != requestGeneration.get()) {
+							return;
+						}
+						setTemporaryHighlight(true);
+						var mode = settings.getString(SETTING_WEATHER_MODE);
+						if (FORECAST.equals(mode)) {
+							eventManager.echo(SHOWING_WEATHER_FORECAST_FOR, StringUtils.capitalize(temporaryLocation));
 						} else {
-							tempLocation = null;
-							eventManager.echo("Location not found", temporaryLocation);
+							eventManager.echo(SHOWING_WEATHER_FOR, StringUtils.capitalize(temporaryLocation));
+						}
+						if (data.currentWeather() != null) {
+							currentWeatherPane.update(data.currentWeather(), data.units());
+						}
+						if (data.forecast() != null) {
+							forecastPane.update(data.forecast());
 						}
 					});
-		} else {
-			eventManager.echo("Units or location missing");
+					scheduleTemporaryWeatherExpiration(generation);
+				}).whenComplete((_, error) -> {
+					if (error != null && !shuttingDown && generation == requestGeneration.get()) {
+						logger.error("Unable to update temporary weather", error);
+						Platform.runLater(() -> {
+							if (!shuttingDown && generation == requestGeneration.get()) {
+								tempLocation = null;
+								eventManager.echo("Unable to refresh temporary weather");
+							}
+						});
+					}
+				});
+	}
+
+	private WeatherData loadTemporaryWeatherData(String temporaryLocation, String units) {
+		var coordinate = weatherService.getCoordinate(temporaryLocation);
+		if (coordinate == null) {
+			return null;
+		}
+		var weather = weatherService.getCurrentWeather(coordinate.lat(), coordinate.lon(), units);
+		var forecast = weatherService.getForecast(coordinate.lat(), coordinate.lon(), units);
+		return new WeatherData(weather, forecast, units);
+	}
+
+	private void scheduleTemporaryWeatherExpiration(long generation) {
+		var duration = settings.getInt(SETTING_TEMPORARY_WEATHER_DURATION);
+		if (duration < 0) {
+			duration = 0;
+		}
+		var currentScheduler = scheduler;
+		if (currentScheduler == null || shuttingDown) {
+			return;
+		}
+		temporaryWeatherTask = currentScheduler.schedule(() -> {
+			if (shuttingDown || generation != requestGeneration.get()) {
+				return;
+			}
+			Platform.runLater(() -> {
+				if (shuttingDown || generation != requestGeneration.get()) {
+					return;
+				}
+				setTemporaryHighlight(false);
+				tempLocation = null;
+			});
+			updateWeatherData();
+		}, duration, TimeUnit.MILLISECONDS);
+	}
+
+	private void cancelTemporaryWeatherTask() {
+		var task = temporaryWeatherTask;
+		if (task != null) {
+			task.cancel(false);
+			temporaryWeatherTask = null;
 		}
 	}
 
 	private void setTemporaryHighlight(boolean enabled) {
+		if (!Platform.isFxApplicationThread()) {
+			throw new IllegalStateException("setTemporaryHighlight must be called on the JavaFX Application Thread");
+		}
 		if (enabled) {
 			if (!currentWeatherPane.getStyleClass().contains(CSS_CLASS_ACCENT_CARD)) {
 				currentWeatherPane.getStyleClass().add(CSS_CLASS_ACCENT_CARD);
@@ -240,12 +368,8 @@ public class WeatherView implements Plugin {
 				forecastPane.getStyleClass().add(CSS_CLASS_ACCENT_CARD);
 			}
 		} else {
-			if (currentWeatherPane.getStyleClass().contains(CSS_CLASS_ACCENT_CARD)) {
-				currentWeatherPane.getStyleClass().remove(CSS_CLASS_ACCENT_CARD);
-			}
-			if (forecastPane.getStyleClass().contains(CSS_CLASS_ACCENT_CARD)) {
-				forecastPane.getStyleClass().remove(CSS_CLASS_ACCENT_CARD);
-			}
+			currentWeatherPane.getStyleClass().remove(CSS_CLASS_ACCENT_CARD);
+			forecastPane.getStyleClass().remove(CSS_CLASS_ACCENT_CARD);
 			eventManager.clearAsync();
 		}
 	}
@@ -253,12 +377,17 @@ public class WeatherView implements Plugin {
 	@Override
 	public Map<String, String> getSettingsContributions() {
 		Map<String, String> map = new HashMap<>();
+
 		map.put(SETTING_UNITS, "metric");
 		map.put(SETTING_LOCATION, "Kempten");
 		map.put(SETTING_OPENWEATHERMAP_APIKEY, StringUtils.EMPTY);
-		map.put(SETTING_WEATHER_MODE, "current");
+		map.put(SETTING_WEATHER_MODE, CURRENT);
 		map.put(SETTING_TEMPORARY_WEATHER_DURATION, "7000");
+
 		return map;
+	}
+
+	private record WeatherData(WeatherBean currentWeather, Forecast forecast, String units) {
 	}
 
 }
