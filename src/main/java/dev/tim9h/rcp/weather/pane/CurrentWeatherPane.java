@@ -74,7 +74,7 @@ public class CurrentWeatherPane extends GridPane {
 		temperature = new Hyperlink();
 		temperature.setOnAction(_ -> {
 			var location = settings.getString(WeatherView.SETTING_LOCATION);
-			openUrl("https://www.google.com/search?q=weather+%s", encodeValue(location));
+			openUrl("https://www.google.com/search?q=weather+" + encodeValue(location));
 		});
 		temperature.getStyleClass().add("accent-label");
 		description = new Label();
@@ -131,6 +131,10 @@ public class CurrentWeatherPane extends GridPane {
 	}
 
 	private void openUrl(String url, Object... params) {
+		if (!Desktop.isDesktopSupported() || !Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
+			logger.warn(() -> "Desktop browsing is not supported");
+			return;
+		}
 		try {
 			Desktop.getDesktop().browse(new URI(String.format(url, params)));
 		} catch (URISyntaxException | IOException e) {
@@ -139,16 +143,15 @@ public class CurrentWeatherPane extends GridPane {
 	}
 
 	public void update(WeatherBean weather, String units) {
+		assert Platform.isFxApplicationThread();
 		logger.info(() -> "Updating weather: " + weather);
-		Platform.runLater(() -> {
-			temperature.textProperty().set(
-					String.valueOf(weather.temperature().intValue()) + WeatherUtils.getUnitStringTemperature(units));
-			description.textProperty().set(weather.description());
-			precipitation.textProperty().set(weather.precipitation() + " mm");
-			humidity.textProperty().set(weather.humidity() + "%");
-			var windSpeed = units.equals("imperial") ? weather.windSpeed() : weather.windSpeed() * 3.6; // km/h
-			wind.textProperty().set(String.format("%.1f %s", windSpeed, WeatherUtils.getUnitStringWindSpeed(units)));
-		});
+		temperature.textProperty()
+				.set(String.valueOf(weather.temperature().intValue()) + WeatherUtils.getUnitStringTemperature(units));
+		description.textProperty().set(weather.description());
+		precipitation.textProperty().set(weather.precipitation() + " mm");
+		humidity.textProperty().set(weather.humidity() + "%");
+		var windSpeed = "imperial".equals(units) ? weather.windSpeed() : weather.windSpeed() * 3.6; // km/h
+		wind.textProperty().set(String.format("%.1f %s", windSpeed, WeatherUtils.getUnitStringWindSpeed(units)));
 	}
 
 }

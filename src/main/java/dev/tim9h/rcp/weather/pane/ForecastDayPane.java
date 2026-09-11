@@ -66,4 +66,11 @@ public class ForecastDayPane {
 		return condition;
 	}
 
+	public void clear() {
+		weekday.setText("");
+		tempMin.setText("");
+		tempMax.setText("");
+		condition.setText("");
+	}
+
 }

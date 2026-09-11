@@ -28,17 +28,19 @@ public class ForecastPane extends GridPane {
 	private Logger logger;
 
 	private List<ForecastDayPane> days;
-	
+
 	@Inject
 	private IconButton btnSwap;
 
 	@Inject
 	private EventManager eventManager;
 
+	private static final DateTimeFormatter WEEKDAY_FORMATTER = DateTimeFormatter.ofPattern("EE");
+
 	@Inject
 	public ForecastPane(Injector injector) {
 		injector.injectMembers(this);
-		
+
 		getStyleClass().add("ccCard");
 		var col = new ColumnConstraints();
 		col.setPercentWidth(20);
@@ -75,26 +77,29 @@ public class ForecastPane extends GridPane {
 	}
 
 	public void update(Forecast forecast) {
+		assert Platform.isFxApplicationThread();
 		logger.info(() -> "Updating weather forecast: " + forecast);
-		Platform.runLater(() -> {
-			var i = 0;
-			for (var day : forecast.days().entrySet()) {
-				var pane = days.get(i);
-				var weather = day.getValue();
-				var weekdayFormatted = day.getKey().format(DateTimeFormatter.ofPattern("E")).substring(0, 2);
-				pane.getWeekday().textProperty().setValue(weekdayFormatted);
-				pane.getTempMin().textProperty()
-						.setValue(String.format("%d°", Integer.valueOf(weather.getTempMin().intValue())));
-				pane.getTempMax().textProperty()
-						.setValue(String.format("%d°", Integer.valueOf(weather.getTempMax().intValue())));
-				pane.getCondition().textProperty().setValue(StringUtils.abbreviate(weather.getCondition(), 7));
 
-				i++;
-				if (i > forecast.days().size() || i >= days.size()) {
-					break;
-				}
+		for (var day : days) {
+			day.clear();
+		}
+
+		var i = 0;
+		for (var entry : forecast.days().entrySet()) {
+			if (i >= days.size()) {
+				break;
 			}
-		});
+			var pane = days.get(i);
+			var weather = entry.getValue();
+			var weekdayFormatted = entry.getKey().format(WEEKDAY_FORMATTER).substring(0, 2);
+			pane.getWeekday().textProperty().setValue(weekdayFormatted);
+			pane.getTempMin().textProperty()
+					.setValue(String.format("%d°", Integer.valueOf(weather.getTempMin().intValue())));
+			pane.getTempMax().textProperty()
+					.setValue(String.format("%d°", Integer.valueOf(weather.getTempMax().intValue())));
+			pane.getCondition().textProperty().setValue(StringUtils.abbreviate(weather.getCondition(), 7));
+			i++;
+		}
 	}
 
 }
