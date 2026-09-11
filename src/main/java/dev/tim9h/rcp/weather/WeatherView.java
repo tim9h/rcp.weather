@@ -183,13 +183,13 @@ public class WeatherView implements Plugin {
 			var location = StringUtils.defaultIfBlank(tempLocation, settings.getString(SETTING_LOCATION));
 			eventManager.echo(SHOWING_WEATHER_FOR, StringUtils.capitalize(location));
 			showCurrentWeatherPanel();
-		}).up().command("location", _ -> displayWeatherLocation()).argumentAction(arg -> {
+		}).up().child("location", _ -> displayWeatherLocation()).argumentAction(arg -> {
 			var location = StringUtils.capitalize(arg);
 			settings.persist(SETTING_LOCATION, location);
 			eventManager.echo("Weather location set to", location);
 			coord = null;
 			updateWeatherData();
-		}).up().build();
+		}).build();
 	}
 
 	private Coordinate getCoord() {
