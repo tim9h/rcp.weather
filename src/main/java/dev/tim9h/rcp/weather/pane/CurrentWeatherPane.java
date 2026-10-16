@@ -13,7 +13,7 @@ import com.google.inject.Inject;
 import com.google.inject.Injector;
 
 import dev.tim9h.rcp.controls.IconButton;
-import dev.tim9h.rcp.event.CcEvent;
+import dev.tim9h.rcp.event.Event;
 import dev.tim9h.rcp.event.EventManager;
 import dev.tim9h.rcp.logging.InjectLogger;
 import dev.tim9h.rcp.settings.Settings;
@@ -117,7 +117,7 @@ public class CurrentWeatherPane extends GridPane {
 		windGrid.add(lblWind, 0, 0);
 		windGrid.add(wind, 0, 1);
 		btnSwap.setLabel('⇄');
-		btnSwap.setOnAction(_ -> eventManager.post(new CcEvent("weather", "forecast")));
+		btnSwap.setOnAction(_ -> eventManager.post(new Event("weather", "forecast")));
 		windGrid.add(btnSwap, 1, 0, 1, 2);
 		return windGrid;
 	}
