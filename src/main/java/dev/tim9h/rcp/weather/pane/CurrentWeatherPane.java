@@ -46,6 +46,8 @@ public class CurrentWeatherPane extends GridPane {
 
 	private Label wind;
 
+	private volatile String temporaryLocation;
+
 	@Inject
 	private Settings settings;
 
@@ -73,7 +75,9 @@ public class CurrentWeatherPane extends GridPane {
 
 		temperature = new Hyperlink();
 		temperature.setOnAction(_ -> {
-			var location = settings.getString(WeatherView.SETTING_LOCATION);
+			var tempLocation = temporaryLocation;
+			var location = tempLocation != null && !tempLocation.isBlank() ? tempLocation
+					: settings.getString(WeatherView.SETTING_LOCATION);
 			openUrl("https://www.google.com/search?q=weather+" + encodeValue(location));
 		});
 		temperature.getStyleClass().add("accent-label");
@@ -107,6 +111,10 @@ public class CurrentWeatherPane extends GridPane {
 		add(windGrid, 3, 0, 1, 2);
 	}
 
+	public void setTemporaryLocation(String temporaryLocation) {
+		this.temporaryLocation = temporaryLocation;
+	}
+
 	private GridPane createSwapButtonWrapper(Label lblWind) {
 		var windGrid = new GridPane();
 		var windCC = new ColumnConstraints();
@@ -136,7 +144,7 @@ public class CurrentWeatherPane extends GridPane {
 			return;
 		}
 		try {
-			Desktop.getDesktop().browse(new URI(String.format(url, params)));
+			Desktop.getDesktop().browse(new URI(url));
 		} catch (URISyntaxException | IOException e) {
 			logger.error(() -> "Unable to open url", e);
 		}

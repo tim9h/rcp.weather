@@ -287,6 +287,8 @@ public class WeatherView implements Plugin {
 							return;
 						}
 						setTemporaryHighlight(true);
+						currentWeatherPane.setTemporaryLocation(temporaryLocation);
+
 						var mode = settings.getString(SETTING_WEATHER_MODE);
 						if (FORECAST.equals(mode)) {
 							eventManager.echo(SHOWING_WEATHER_FORECAST_FOR, StringUtils.capitalize(temporaryLocation));
@@ -342,6 +344,7 @@ public class WeatherView implements Plugin {
 					return;
 				}
 				setTemporaryHighlight(false);
+				currentWeatherPane.setTemporaryLocation(null);
 				tempLocation = null;
 			});
 			updateWeatherData();
