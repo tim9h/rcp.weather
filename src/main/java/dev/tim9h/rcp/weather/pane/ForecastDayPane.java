@@ -13,6 +13,8 @@ public class ForecastDayPane {
 
 	private static final String CSS_CLASS_ACCENT = "accent-label";
 
+	private static final String CSS_CLASS_DETAIL = "detail-label";
+
 	private Label weekday;
 
 	private Label tempMin;
@@ -27,7 +29,7 @@ public class ForecastDayPane {
 
 	public ForecastDayPane() {
 		weekday = new Label();
-		weekday.getStyleClass().add(CSS_CLASS_SECONDARY);
+		weekday.getStyleClass().addAll(CSS_CLASS_SECONDARY, CSS_CLASS_DETAIL);
 		tempMin = new Label();
 		tempMax = new Label();
 		tempMax.getStyleClass().add(CSS_CLASS_ACCENT);

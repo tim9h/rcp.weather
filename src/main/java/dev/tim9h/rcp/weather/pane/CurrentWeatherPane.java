@@ -36,6 +36,8 @@ public class CurrentWeatherPane extends GridPane {
 
 	private static final String CSS_CLASS_SECONDARY = "secondary";
 
+	private static final String CSS_CLASS_DETAIL = "detail-label";
+
 	private Hyperlink temperature;
 
 	private Label description;
@@ -83,13 +85,13 @@ public class CurrentWeatherPane extends GridPane {
 		temperature.getStyleClass().add("accent-label");
 		description = new Label();
 		var lblPrecipitation = new Label("☔ Precipitation");
-		lblPrecipitation.getStyleClass().add(CSS_CLASS_SECONDARY);
+		lblPrecipitation.getStyleClass().addAll(CSS_CLASS_SECONDARY, CSS_CLASS_DETAIL);
 		precipitation = new Label();
 		var lblHumidiy = new Label("⛆ Humidity");
-		lblHumidiy.getStyleClass().add(CSS_CLASS_SECONDARY);
+		lblHumidiy.getStyleClass().addAll(CSS_CLASS_SECONDARY, CSS_CLASS_DETAIL);
 		humidity = new Label();
 		var lblWind = new Label("⇶ Wind");
-		lblWind.getStyleClass().add(CSS_CLASS_SECONDARY);
+		lblWind.getStyleClass().addAll(CSS_CLASS_SECONDARY, CSS_CLASS_DETAIL);
 		wind = new Label();
 
 		var symbol = new Label();
