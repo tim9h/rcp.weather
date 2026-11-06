@@ -18,6 +18,8 @@ import org.apache.logging.log4j.Logger;
 
 import com.google.inject.Inject;
 
+import dev.tim9h.rcp.controls.IconButton;
+import dev.tim9h.rcp.event.Event;
 import dev.tim9h.rcp.event.EventManager;
 import dev.tim9h.rcp.logging.InjectLogger;
 import dev.tim9h.rcp.settings.Settings;
@@ -33,8 +35,9 @@ import dev.tim9h.rcp.weather.pane.CurrentWeatherPane;
 import dev.tim9h.rcp.weather.pane.ForecastPane;
 import dev.tim9h.rcp.weather.service.WeatherService;
 import javafx.application.Platform;
+import javafx.geometry.Pos;
 import javafx.scene.Node;
-import javafx.scene.layout.Pane;
+import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.StackPane;
 
 public class WeatherView implements Plugin {
@@ -81,6 +84,9 @@ public class WeatherView implements Plugin {
 	@Inject
 	private CurrentWeatherPane currentWeatherPane;
 
+	@Inject
+	private IconButton btnSwap;
+
 	private final AtomicBoolean refreshInProgress = new AtomicBoolean();
 
 	private final AtomicLong requestGeneration = new AtomicLong();
@@ -89,7 +95,9 @@ public class WeatherView implements Plugin {
 
 	private volatile String tempLocation;
 
-	private Pane wrapper;
+	private AnchorPane wrapper;
+
+	private StackPane contentPane;
 
 	private ScheduledExecutorService scheduler;
 
@@ -122,13 +130,28 @@ public class WeatherView implements Plugin {
 
 	@Override
 	public Optional<Node> getNode() throws IOException {
-		wrapper = new StackPane();
+		wrapper = new AnchorPane();
+		contentPane = new StackPane();
+		AnchorPane.setTopAnchor(contentPane, 0.0);
+		AnchorPane.setRightAnchor(contentPane, 0.0);
+		AnchorPane.setBottomAnchor(contentPane, 0.0);
+		AnchorPane.setLeftAnchor(contentPane, 0.0);
 		var mode = settings.getString(SETTING_WEATHER_MODE);
 		if (FORECAST.equals(mode)) {
 			showWeatherForecastPanel();
 		} else {
 			showCurrentWeatherPanel();
 		}
+		btnSwap.setLabel('⇄');
+		btnSwap.setOnAction(_ -> eventManager.post(new Event(WEATHER,
+				contentPane.getChildren().contains(forecastPane) ? CURRENT : FORECAST)));
+		var buttonPane = new StackPane(btnSwap);
+		buttonPane.setPickOnBounds(false);
+		StackPane.setAlignment(btnSwap, Pos.CENTER_RIGHT);
+		AnchorPane.setTopAnchor(buttonPane, 0.0);
+		AnchorPane.setRightAnchor(buttonPane, 6.0);
+		AnchorPane.setBottomAnchor(buttonPane, 0.0);
+		wrapper.getChildren().addAll(contentPane, buttonPane);
 		return Optional.of(wrapper);
 	}
 
@@ -210,11 +233,11 @@ public class WeatherView implements Plugin {
 	}
 
 	private void showCurrentWeatherPanel() {
-		wrapper.getChildren().setAll(currentWeatherPane);
+		contentPane.getChildren().setAll(currentWeatherPane);
 	}
 
 	private void showWeatherForecastPanel() {
-		wrapper.getChildren().setAll(forecastPane);
+		contentPane.getChildren().setAll(forecastPane);
 	}
 
 	private void updateWeatherData() {

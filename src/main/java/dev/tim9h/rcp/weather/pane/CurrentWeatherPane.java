@@ -12,9 +12,6 @@ import org.apache.logging.log4j.Logger;
 import com.google.inject.Inject;
 import com.google.inject.Injector;
 
-import dev.tim9h.rcp.controls.IconButton;
-import dev.tim9h.rcp.event.Event;
-import dev.tim9h.rcp.event.EventManager;
 import dev.tim9h.rcp.logging.InjectLogger;
 import dev.tim9h.rcp.settings.Settings;
 import dev.tim9h.rcp.weather.WeatherView;
@@ -29,8 +26,6 @@ import javafx.scene.control.Label;
 import javafx.scene.layout.ColumnConstraints;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
-import javafx.scene.layout.Priority;
-import javafx.scene.layout.Region;
 
 public class CurrentWeatherPane extends GridPane {
 
@@ -57,12 +52,6 @@ public class CurrentWeatherPane extends GridPane {
 	private Logger logger;
 
 	@Inject
-	private IconButton btnSwap;
-
-	@Inject
-	private EventManager eventManager;
-
-	@Inject
 	public CurrentWeatherPane(Injector injector) {
 		injector.injectMembers(this);
 
@@ -82,6 +71,7 @@ public class CurrentWeatherPane extends GridPane {
 					: settings.getString(WeatherView.SETTING_LOCATION);
 			openUrl("https://www.google.com/search?q=weather+" + encodeValue(location));
 		});
+
 		temperature.getStyleClass().add("accent-label");
 		description = new Label();
 		var lblPrecipitation = new Label("☔ Precipitation");
@@ -109,27 +99,12 @@ public class CurrentWeatherPane extends GridPane {
 		add(lblHumidiy, 2, 0);
 		add(humidity, 2, 1);
 
-		var windGrid = createSwapButtonWrapper(lblWind);
-		add(windGrid, 3, 0, 1, 2);
+		add(lblWind, 3, 0);
+		add(wind, 3, 1);
 	}
 
 	public void setTemporaryLocation(String temporaryLocation) {
 		this.temporaryLocation = temporaryLocation;
-	}
-
-	private GridPane createSwapButtonWrapper(Label lblWind) {
-		var windGrid = new GridPane();
-		var windCC = new ColumnConstraints();
-		windCC.setHgrow(Priority.ALWAYS);
-		var btnCC = new ColumnConstraints();
-		btnCC.setPrefWidth(Region.USE_COMPUTED_SIZE);
-		windGrid.getColumnConstraints().addAll(windCC, btnCC);
-		windGrid.add(lblWind, 0, 0);
-		windGrid.add(wind, 0, 1);
-		btnSwap.setLabel('⇄');
-		btnSwap.setOnAction(_ -> eventManager.post(new Event("weather", "forecast")));
-		windGrid.add(btnSwap, 1, 0, 1, 2);
-		return windGrid;
 	}
 
 	private static String encodeValue(String value) {
@@ -140,7 +115,7 @@ public class CurrentWeatherPane extends GridPane {
 		return encoded;
 	}
 
-	private void openUrl(String url, Object... params) {
+	private void openUrl(String url) {
 		if (!Desktop.isDesktopSupported() || !Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
 			logger.warn(() -> "Desktop browsing is not supported");
 			return;
