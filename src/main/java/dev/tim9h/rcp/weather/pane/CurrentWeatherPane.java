@@ -70,6 +70,7 @@ public class CurrentWeatherPane extends GridPane {
 		getColumnConstraints().addAll(wide, col, col, col);
 
 		temperature = new Hyperlink();
+		temperature.getStyleClass().add("highlighted");
 		temperature.setOnAction(_ -> {
 			eventManager.post(new Event(Event.EVENT_CLI_REQUEST_FOCUS));
 			var tempLocation = temporaryLocation;
