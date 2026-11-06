@@ -12,6 +12,8 @@ import org.apache.logging.log4j.Logger;
 import com.google.inject.Inject;
 import com.google.inject.Injector;
 
+import dev.tim9h.rcp.event.Event;
+import dev.tim9h.rcp.event.EventManager;
 import dev.tim9h.rcp.logging.InjectLogger;
 import dev.tim9h.rcp.settings.Settings;
 import dev.tim9h.rcp.weather.WeatherView;
@@ -52,6 +54,9 @@ public class CurrentWeatherPane extends GridPane {
 	private Logger logger;
 
 	@Inject
+	private EventManager eventManager;
+
+	@Inject
 	public CurrentWeatherPane(Injector injector) {
 		injector.injectMembers(this);
 
@@ -66,6 +71,7 @@ public class CurrentWeatherPane extends GridPane {
 
 		temperature = new Hyperlink();
 		temperature.setOnAction(_ -> {
+			eventManager.post(new Event(Event.EVENT_CLI_REQUEST_FOCUS));
 			var tempLocation = temporaryLocation;
 			var location = tempLocation != null && !tempLocation.isBlank() ? tempLocation
 					: settings.getString(WeatherView.SETTING_LOCATION);

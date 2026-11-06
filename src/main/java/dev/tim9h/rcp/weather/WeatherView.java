@@ -1,6 +1,7 @@
 package dev.tim9h.rcp.weather;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -12,6 +13,7 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.regex.Pattern;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.Logger;
@@ -39,6 +41,7 @@ import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.StackPane;
+import javafx.scene.shape.SVGPath;
 
 public class WeatherView implements Plugin {
 
@@ -64,6 +67,10 @@ public class WeatherView implements Plugin {
 
 	private static final String WEATHER = "weather";
 
+	private static final Pattern SVG_PATH = Pattern.compile("<path[^>]* d=\"([^\"]+)\"");
+
+	private static final double SWAP_ICON_SIZE = 16;
+
 	private static final long REFRESH_INTERVAL_MINUTES = 5;
 
 	@InjectLogger
@@ -87,6 +94,10 @@ public class WeatherView implements Plugin {
 	@Inject
 	private IconButton btnSwap;
 
+	private SVGPath calendarMonthIcon;
+
+	private SVGPath calendarTodayIcon;
+
 	private final AtomicBoolean refreshInProgress = new AtomicBoolean();
 
 	private final AtomicLong requestGeneration = new AtomicLong();
@@ -94,8 +105,6 @@ public class WeatherView implements Plugin {
 	private volatile Coordinate coord;
 
 	private volatile String tempLocation;
-
-	private AnchorPane wrapper;
 
 	private StackPane contentPane;
 
@@ -130,21 +139,21 @@ public class WeatherView implements Plugin {
 
 	@Override
 	public Optional<Node> getNode() throws IOException {
-		wrapper = new AnchorPane();
+		var wrapper = new AnchorPane();
 		contentPane = new StackPane();
 		AnchorPane.setTopAnchor(contentPane, 0.0);
 		AnchorPane.setRightAnchor(contentPane, 0.0);
 		AnchorPane.setBottomAnchor(contentPane, 0.0);
 		AnchorPane.setLeftAnchor(contentPane, 0.0);
+		loadSwapIcons();
 		var mode = settings.getString(SETTING_WEATHER_MODE);
 		if (FORECAST.equals(mode)) {
 			showWeatherForecastPanel();
 		} else {
 			showCurrentWeatherPanel();
 		}
-		btnSwap.setLabel('⇄');
-		btnSwap.setOnAction(_ -> eventManager.post(new Event(WEATHER,
-				contentPane.getChildren().contains(forecastPane) ? CURRENT : FORECAST)));
+		btnSwap.setOnAction(_ -> eventManager
+				.post(new Event(WEATHER, contentPane.getChildren().contains(forecastPane) ? CURRENT : FORECAST)));
 		var buttonPane = new StackPane(btnSwap);
 		buttonPane.setPickOnBounds(false);
 		StackPane.setAlignment(btnSwap, Pos.CENTER_RIGHT);
@@ -234,10 +243,49 @@ public class WeatherView implements Plugin {
 
 	private void showCurrentWeatherPanel() {
 		contentPane.getChildren().setAll(currentWeatherPane);
+		setSwapIcon(calendarMonthIcon);
 	}
 
 	private void showWeatherForecastPanel() {
 		contentPane.getChildren().setAll(forecastPane);
+		setSwapIcon(calendarTodayIcon);
+	}
+
+	private void setSwapIcon(SVGPath icon) {
+		btnSwap.setGraphic(icon);
+	}
+
+	private void loadSwapIcons() {
+		try {
+			var monthIcon = loadSvgPath("/images/calendar_month.svg");
+			var todayIcon = loadSvgPath("/images/calendar_today.svg");
+			btnSwap.bindGraphicFill(monthIcon);
+			btnSwap.bindGraphicFill(todayIcon);
+			calendarMonthIcon = monthIcon;
+			calendarTodayIcon = todayIcon;
+		} catch (IOException | RuntimeException e) {
+			logger.error(() -> "Unable to load weather view icons", e);
+			btnSwap.setGraphic(null);
+			btnSwap.setLabel('⚠');
+		}
+	}
+
+	private SVGPath loadSvgPath(String resourcePath) throws IOException {
+		try (var input = getClass().getResourceAsStream(resourcePath)) {
+			if (input == null) {
+				throw new IOException("Missing weather icon resource: " + resourcePath);
+			}
+			var svg = new String(input.readAllBytes(), StandardCharsets.UTF_8);
+			var matcher = SVG_PATH.matcher(svg);
+			if (!matcher.find()) {
+				throw new IOException("Invalid weather icon resource: " + resourcePath);
+			}
+			var path = new SVGPath();
+			path.setContent(matcher.group(1));
+			path.setScaleX(SWAP_ICON_SIZE / 24);
+			path.setScaleY(SWAP_ICON_SIZE / 24);
+			return path;
+		}
 	}
 
 	private void updateWeatherData() {
