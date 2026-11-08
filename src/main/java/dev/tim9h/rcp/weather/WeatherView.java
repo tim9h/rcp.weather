@@ -1,7 +1,6 @@
 package dev.tim9h.rcp.weather;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -13,7 +12,6 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.regex.Pattern;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.Logger;
@@ -30,6 +28,7 @@ import dev.tim9h.rcp.spi.CommandNode;
 import dev.tim9h.rcp.spi.Gravity;
 import dev.tim9h.rcp.spi.Plugin;
 import dev.tim9h.rcp.spi.Position;
+import dev.tim9h.rcp.util.SvgIconUtil;
 import dev.tim9h.rcp.weather.bean.Coordinate;
 import dev.tim9h.rcp.weather.bean.Forecast;
 import dev.tim9h.rcp.weather.bean.WeatherBean;
@@ -66,8 +65,6 @@ public class WeatherView implements Plugin {
 	private static final String CSS_CLASS_ACCENT_CARD = "accent-cccard";
 
 	private static final String WEATHER = "weather";
-
-	private static final Pattern SVG_PATH = Pattern.compile("<path[^>]* d=\"([^\"]+)\"");
 
 	private static final double SWAP_ICON_SIZE = 16;
 
@@ -257,8 +254,10 @@ public class WeatherView implements Plugin {
 
 	private void loadSwapIcons() {
 		try {
-			var monthIcon = loadSvgPath("/images/calendar_month.svg");
-			var todayIcon = loadSvgPath("/images/calendar_today.svg");
+			var monthIcon = SvgIconUtil.loadPath(getClass().getResourceAsStream("/images/calendar_month.svg"),
+					"/images/calendar_month.svg", SWAP_ICON_SIZE / 24);
+			var todayIcon = SvgIconUtil.loadPath(getClass().getResourceAsStream("/images/calendar_today.svg"),
+					"/images/calendar_today.svg", SWAP_ICON_SIZE / 24);
 			btnSwap.bindGraphicFill(monthIcon);
 			btnSwap.bindGraphicFill(todayIcon);
 			calendarMonthIcon = monthIcon;
@@ -267,24 +266,6 @@ public class WeatherView implements Plugin {
 			logger.error(() -> "Unable to load weather view icons", e);
 			btnSwap.setGraphic(null);
 			btnSwap.setLabel('⚠');
-		}
-	}
-
-	private SVGPath loadSvgPath(String resourcePath) throws IOException {
-		try (var input = getClass().getResourceAsStream(resourcePath)) {
-			if (input == null) {
-				throw new IOException("Missing weather icon resource: " + resourcePath);
-			}
-			var svg = new String(input.readAllBytes(), StandardCharsets.UTF_8);
-			var matcher = SVG_PATH.matcher(svg);
-			if (!matcher.find()) {
-				throw new IOException("Invalid weather icon resource: " + resourcePath);
-			}
-			var path = new SVGPath();
-			path.setContent(matcher.group(1));
-			path.setScaleX(SWAP_ICON_SIZE / 24);
-			path.setScaleY(SWAP_ICON_SIZE / 24);
-			return path;
 		}
 	}
 

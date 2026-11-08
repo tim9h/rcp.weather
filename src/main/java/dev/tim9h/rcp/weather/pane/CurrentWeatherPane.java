@@ -16,9 +16,9 @@ import dev.tim9h.rcp.event.Event;
 import dev.tim9h.rcp.event.EventManager;
 import dev.tim9h.rcp.logging.InjectLogger;
 import dev.tim9h.rcp.settings.Settings;
+import dev.tim9h.rcp.util.SvgIconUtil;
 import dev.tim9h.rcp.weather.WeatherView;
 import dev.tim9h.rcp.weather.bean.WeatherBean;
-import dev.tim9h.rcp.weather.util.WeatherIconUtil;
 import dev.tim9h.rcp.weather.util.WeatherSymbolConverter;
 import dev.tim9h.rcp.weather.util.WeatherUtils;
 import javafx.application.Platform;
@@ -95,16 +95,21 @@ public class CurrentWeatherPane extends GridPane {
 		var lblWind = new Label("Wind");
 		lblWind.getStyleClass().addAll(CSS_CLASS_SECONDARY, CSS_CLASS_DETAIL);
 		wind = new Label();
-		lblPrecipitation.setGraphic(
-				WeatherIconUtil.loadIcon("/images/weather/precipitation.svg", lblPrecipitation, DETAIL_ICON_SIZE));
-		lblHumidiy.setGraphic(WeatherIconUtil.loadIcon("/images/weather/humidity.svg", lblHumidiy, DETAIL_ICON_SIZE));
-		lblWind.setGraphic(WeatherIconUtil.loadIcon("/images/weather/wind.svg", lblWind, DETAIL_ICON_SIZE));
+		lblPrecipitation
+				.setGraphic(SvgIconUtil.loadIcon(getClass().getResourceAsStream("/images/weather/precipitation.svg"),
+						"/images/weather/precipitation.svg", lblPrecipitation, DETAIL_ICON_SIZE));
+		lblHumidiy.setGraphic(SvgIconUtil.loadIcon(getClass().getResourceAsStream("/images/weather/humidity.svg"),
+				"/images/weather/humidity.svg", lblHumidiy, DETAIL_ICON_SIZE));
+		lblWind.setGraphic(SvgIconUtil.loadIcon(getClass().getResourceAsStream("/images/weather/wind.svg"),
+				"/images/weather/wind.svg", lblWind, DETAIL_ICON_SIZE));
 
 		var symbol = new Label();
 		symbol.getStyleClass().add(CSS_CLASS_SECONDARY);
 		symbol.graphicProperty().bind(Bindings.createObjectBinding(() -> {
 			var resource = WeatherSymbolConverter.getIconResource(description.getText());
-			return resource == null ? null : WeatherIconUtil.loadIcon(resource, symbol, CONDITION_ICON_SIZE);
+			return resource == null ? null
+					: SvgIconUtil.loadIcon(getClass().getResourceAsStream(resource), resource, symbol,
+							CONDITION_ICON_SIZE);
 		}, description.textProperty()));
 		var descriptionBox = new HBox(symbol, description);
 

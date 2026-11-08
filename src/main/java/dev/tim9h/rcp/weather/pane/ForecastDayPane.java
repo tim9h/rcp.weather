@@ -1,6 +1,6 @@
 package dev.tim9h.rcp.weather.pane;
 
-import dev.tim9h.rcp.weather.util.WeatherIconUtil;
+import dev.tim9h.rcp.util.SvgIconUtil;
 import dev.tim9h.rcp.weather.util.WeatherSymbolConverter;
 import javafx.beans.binding.Bindings;
 import javafx.geometry.Insets;
@@ -41,7 +41,8 @@ public class ForecastDayPane {
 		symbol.getStyleClass().add(CSS_CLASS_SECONDARY);
 		symbol.graphicProperty().bind(Bindings.createObjectBinding(() -> {
 			var resource = WeatherSymbolConverter.getIconResource(condition.getText());
-			return resource == null ? null : WeatherIconUtil.loadIcon(resource, symbol, 16);
+			return resource == null ? null
+					: SvgIconUtil.loadIcon(getClass().getResourceAsStream(resource), resource, symbol, 16);
 		}, condition.textProperty()));
 		bottom = new HBox(symbol, condition);
 		HBox.setMargin(top, new Insets(0));
