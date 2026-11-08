@@ -12,8 +12,11 @@ import org.apache.logging.log4j.Logger;
 import com.google.inject.Inject;
 import com.google.inject.Injector;
 
+import dev.tim9h.rcp.event.Event;
+import dev.tim9h.rcp.event.EventManager;
 import dev.tim9h.rcp.logging.InjectLogger;
 import dev.tim9h.rcp.settings.Settings;
+import dev.tim9h.rcp.util.SvgIconUtil;
 import dev.tim9h.rcp.weather.WeatherView;
 import dev.tim9h.rcp.weather.bean.WeatherBean;
 import dev.tim9h.rcp.weather.util.WeatherSymbolConverter;
@@ -32,6 +35,10 @@ public class CurrentWeatherPane extends GridPane {
 	private static final String CSS_CLASS_SECONDARY = "secondary";
 
 	private static final String CSS_CLASS_DETAIL = "detail-label";
+
+	private static final double DETAIL_ICON_SIZE = 14;
+
+	private static final double CONDITION_ICON_SIZE = 16;
 
 	private Hyperlink temperature;
 
@@ -52,6 +59,9 @@ public class CurrentWeatherPane extends GridPane {
 	private Logger logger;
 
 	@Inject
+	private EventManager eventManager;
+
+	@Inject
 	public CurrentWeatherPane(Injector injector) {
 		injector.injectMembers(this);
 
@@ -65,7 +75,9 @@ public class CurrentWeatherPane extends GridPane {
 		getColumnConstraints().addAll(wide, col, col, col);
 
 		temperature = new Hyperlink();
+		temperature.getStyleClass().add("highlighted");
 		temperature.setOnAction(_ -> {
+			eventManager.post(new Event(Event.EVENT_CLI_REQUEST_FOCUS));
 			var tempLocation = temporaryLocation;
 			var location = tempLocation != null && !tempLocation.isBlank() ? tempLocation
 					: settings.getString(WeatherView.SETTING_LOCATION);
@@ -74,20 +86,31 @@ public class CurrentWeatherPane extends GridPane {
 
 		temperature.getStyleClass().add("accent-label");
 		description = new Label();
-		var lblPrecipitation = new Label("☔ Precipitation");
+		var lblPrecipitation = new Label("Precipitation");
 		lblPrecipitation.getStyleClass().addAll(CSS_CLASS_SECONDARY, CSS_CLASS_DETAIL);
 		precipitation = new Label();
-		var lblHumidiy = new Label("⛆ Humidity");
+		var lblHumidiy = new Label("Humidity");
 		lblHumidiy.getStyleClass().addAll(CSS_CLASS_SECONDARY, CSS_CLASS_DETAIL);
 		humidity = new Label();
-		var lblWind = new Label("⇶ Wind");
+		var lblWind = new Label("Wind");
 		lblWind.getStyleClass().addAll(CSS_CLASS_SECONDARY, CSS_CLASS_DETAIL);
 		wind = new Label();
+		lblPrecipitation
+				.setGraphic(SvgIconUtil.loadIcon(getClass().getResourceAsStream("/images/weather/precipitation.svg"),
+						"/images/weather/precipitation.svg", lblPrecipitation, DETAIL_ICON_SIZE));
+		lblHumidiy.setGraphic(SvgIconUtil.loadIcon(getClass().getResourceAsStream("/images/weather/humidity.svg"),
+				"/images/weather/humidity.svg", lblHumidiy, DETAIL_ICON_SIZE));
+		lblWind.setGraphic(SvgIconUtil.loadIcon(getClass().getResourceAsStream("/images/weather/wind.svg"),
+				"/images/weather/wind.svg", lblWind, DETAIL_ICON_SIZE));
 
 		var symbol = new Label();
 		symbol.getStyleClass().add(CSS_CLASS_SECONDARY);
-		symbol.textProperty().bind(Bindings.createStringBinding(
-				() -> WeatherSymbolConverter.getSymbol(description.getText()), description.textProperty()));
+		symbol.graphicProperty().bind(Bindings.createObjectBinding(() -> {
+			var resource = WeatherSymbolConverter.getIconResource(description.getText());
+			return resource == null ? null
+					: SvgIconUtil.loadIcon(getClass().getResourceAsStream(resource), resource, symbol,
+							CONDITION_ICON_SIZE);
+		}, description.textProperty()));
 		var descriptionBox = new HBox(symbol, description);
 
 		add(temperature, 0, 0);

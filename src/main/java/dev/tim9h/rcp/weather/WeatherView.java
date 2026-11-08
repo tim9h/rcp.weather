@@ -28,6 +28,7 @@ import dev.tim9h.rcp.spi.CommandNode;
 import dev.tim9h.rcp.spi.Gravity;
 import dev.tim9h.rcp.spi.Plugin;
 import dev.tim9h.rcp.spi.Position;
+import dev.tim9h.rcp.util.SvgIconUtil;
 import dev.tim9h.rcp.weather.bean.Coordinate;
 import dev.tim9h.rcp.weather.bean.Forecast;
 import dev.tim9h.rcp.weather.bean.WeatherBean;
@@ -39,6 +40,7 @@ import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.StackPane;
+import javafx.scene.shape.SVGPath;
 
 public class WeatherView implements Plugin {
 
@@ -64,6 +66,8 @@ public class WeatherView implements Plugin {
 
 	private static final String WEATHER = "weather";
 
+	private static final double SWAP_ICON_SIZE = 16;
+
 	private static final long REFRESH_INTERVAL_MINUTES = 5;
 
 	@InjectLogger
@@ -87,6 +91,10 @@ public class WeatherView implements Plugin {
 	@Inject
 	private IconButton btnSwap;
 
+	private SVGPath calendarMonthIcon;
+
+	private SVGPath calendarTodayIcon;
+
 	private final AtomicBoolean refreshInProgress = new AtomicBoolean();
 
 	private final AtomicLong requestGeneration = new AtomicLong();
@@ -94,8 +102,6 @@ public class WeatherView implements Plugin {
 	private volatile Coordinate coord;
 
 	private volatile String tempLocation;
-
-	private AnchorPane wrapper;
 
 	private StackPane contentPane;
 
@@ -130,21 +136,21 @@ public class WeatherView implements Plugin {
 
 	@Override
 	public Optional<Node> getNode() throws IOException {
-		wrapper = new AnchorPane();
+		var wrapper = new AnchorPane();
 		contentPane = new StackPane();
 		AnchorPane.setTopAnchor(contentPane, 0.0);
 		AnchorPane.setRightAnchor(contentPane, 0.0);
 		AnchorPane.setBottomAnchor(contentPane, 0.0);
 		AnchorPane.setLeftAnchor(contentPane, 0.0);
+		loadSwapIcons();
 		var mode = settings.getString(SETTING_WEATHER_MODE);
 		if (FORECAST.equals(mode)) {
 			showWeatherForecastPanel();
 		} else {
 			showCurrentWeatherPanel();
 		}
-		btnSwap.setLabel('⇄');
-		btnSwap.setOnAction(_ -> eventManager.post(new Event(WEATHER,
-				contentPane.getChildren().contains(forecastPane) ? CURRENT : FORECAST)));
+		btnSwap.setOnAction(_ -> eventManager
+				.post(new Event(WEATHER, contentPane.getChildren().contains(forecastPane) ? CURRENT : FORECAST)));
 		var buttonPane = new StackPane(btnSwap);
 		buttonPane.setPickOnBounds(false);
 		StackPane.setAlignment(btnSwap, Pos.CENTER_RIGHT);
@@ -234,10 +240,33 @@ public class WeatherView implements Plugin {
 
 	private void showCurrentWeatherPanel() {
 		contentPane.getChildren().setAll(currentWeatherPane);
+		setSwapIcon(calendarMonthIcon);
 	}
 
 	private void showWeatherForecastPanel() {
 		contentPane.getChildren().setAll(forecastPane);
+		setSwapIcon(calendarTodayIcon);
+	}
+
+	private void setSwapIcon(SVGPath icon) {
+		btnSwap.setGraphic(icon);
+	}
+
+	private void loadSwapIcons() {
+		try {
+			var monthIcon = SvgIconUtil.loadPath(getClass().getResourceAsStream("/images/calendar_month.svg"),
+					"/images/calendar_month.svg", SWAP_ICON_SIZE / 24);
+			var todayIcon = SvgIconUtil.loadPath(getClass().getResourceAsStream("/images/calendar_today.svg"),
+					"/images/calendar_today.svg", SWAP_ICON_SIZE / 24);
+			btnSwap.bindGraphicFill(monthIcon);
+			btnSwap.bindGraphicFill(todayIcon);
+			calendarMonthIcon = monthIcon;
+			calendarTodayIcon = todayIcon;
+		} catch (IOException | RuntimeException e) {
+			logger.error(() -> "Unable to load weather view icons", e);
+			btnSwap.setGraphic(null);
+			btnSwap.setLabel('⚠');
+		}
 	}
 
 	private void updateWeatherData() {
